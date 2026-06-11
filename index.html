@@ -1,146 +1,132 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Realtonomy</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-      background: #ffffff;
-      color: #000000;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    .container { text-align: center; max-width: 600px; }
-    .dawn-image { max-width: 400px; width: 100%; height: auto; }
-    .hi-btn {
-      margin-top: 24px;
-      padding: 14px 32px;
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: #ffffff;
-      background: #1a6bdc;
-      border: none;
-      border-radius: 50px;
-      cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
-      box-shadow: 0 4px 14px rgba(26,107,220,0.35);
-    }
-    .hi-btn:hover { background: #1558c0; transform: translateY(-1px); }
-    .hi-btn:active { transform: scale(0.97); }
-    .counters {
-      margin-top: 20px;
-      display: flex;
-      justify-content: center;
-      gap: 32px;
-      font-size: 0.88rem;
-      color: #888;
-    }
-    .counter-item span {
-      display: block;
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: #1a6bdc;
-      line-height: 1.2;
-    }
-    @media (max-width: 640px) {
-      .hi-btn { font-size: 1rem; padding: 12px 24px; }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <img src="Dawn_Transparent.png" alt="Dawn" class="dawn-image" />
-    <button class="hi-btn" id="hiBtn">Say Hi to Dawn</button>
-    <div class="counters">
-      <div class="counter-item">
-        <span id="visitCount">...</span>
-        Page Visits
-      </div>
-      <div class="counter-item">
-        <span id="clickCount">...</span>
-        Hi's Said
-      </div>
-    </div>
-  </div>
-
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-
-  <script>
-    firebase.initializeApp({
-      apiKey: "AIzaSyCfssB7iM_zTHDBOVoLH9JqVxNZwaVbK9s",
-      authDomain: "realtonomy.firebaseapp.com",
-      projectId: "realtonomy",
-      storageBucket: "realtonomy.firebasestorage.app",
-      messagingSenderId: "393079711947",
-      appId: "1:393079711947:web:612f107ae44720261ed34e"
-    });
-
-    const db = firebase.firestore();
-    const countersRef = db.collection("stats").doc("counters");
-    const FieldValue = firebase.firestore.FieldValue;
-
-    // Increment visit count (set with merge creates doc if missing)
-    countersRef.set({ visits: FieldValue.increment(1) }, { merge: true })
-      .then(() => countersRef.get())
-      .then(snap => {
-        const data = snap.data() || {};
-        document.getElementById('visitCount').textContent = data.visits || 0;
-        document.getElementById('clickCount').textContent = data.clicks || 0;
-      })
-      .catch(err => {
-        document.getElementById('visitCount').textContent = '—';
-        document.getElementById('clickCount').textContent = '—';
-        console.error('Firestore error:', err);
-      });
-
-    // --- Speech Synthesis ---
-    function sayHi() {
-      countersRef.set({ clicks: FieldValue.increment(1) }, { merge: true })
-        .then(() => countersRef.get())
-        .then(snap => {
-          document.getElementById('clickCount').textContent = snap.data().clicks || 0;
-        });
-
-      const utterance = new SpeechSynthesisUtterance("... Hi, I'm Dawn. See you later.");
-      utterance.lang = 'en-GB';
-
-      function doSpeak() {
-        const voices = speechSynthesis.getVoices();
-        const britishFemale =
-          voices.find(v => v.name === 'Google UK English Female') ||
-          voices.find(v => v.name === 'Microsoft Libby Online (Natural)') ||
-          voices.find(v => v.name === 'Microsoft Mia Online (Natural)') ||
-          voices.find(v => v.name.includes('Serena')) ||
-          voices.find(v => v.name.includes('Martha')) ||
-          voices.find(v => v.lang === 'en-GB' && v.name.toLowerCase().includes('female')) ||
-          voices.find(v => v.lang === 'en-GB') ||
-          voices.find(v => v.lang.startsWith('en'));
-
-        if (britishFemale) utterance.voice = britishFemale;
-
-        const primer = new SpeechSynthesisUtterance(' ');
-        primer.volume = 0;
-        if (britishFemale) primer.voice = britishFemale;
-        speechSynthesis.speak(primer);
-
-        setTimeout(() => speechSynthesis.speak(utterance), 300);
-      }
-
-      if (speechSynthesis.getVoices().length > 0) {
-        doSpeak();
-      } else {
-        speechSynthesis.onvoiceschanged = doSpeak;
-      }
-    }
-
-    document.getElementById('hiBtn').addEventListener('click', sayHi);
-  </script>
-</body>
+  <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Realtonomy</title>
+    <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+                  background: #ffffff;
+                  color: #000000;
+                  min-height: 100vh;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  padding: 20px;
+          }
+          .container { text-align: center; max-width: 600px; }
+          .dawn-image { max-width: 400px; width: 100%; height: auto; }
+          .hi-btn {
+                  margin-top: 24px;
+                  padding: 14px 32px;
+                  font-size: 1.1rem;
+                  font-weight: 600;
+                  color: #ffffff;
+                  background: #1a6bdc;
+                  border: none;
+                  border-radius: 50px;
+                  cursor: pointer;
+                  transition: background 0.2s, transform 0.1s;
+                  box-shadow: 0 4px 14px rgba(26,107,220,0.35);
+          }
+          .hi-btn:hover { background: #1558c0; transform: translateY(-1px); }
+          .hi-btn:active { transform: scale(0.97); }
+          .counters {
+                  margin-top: 20px;
+                  display: flex;
+                  justify-content: center;
+                  gap: 32px;
+                  font-size: 0.88rem;
+                  color: #888;
+          }
+          .counter-item span {
+                  display: block;
+                  font-size: 1.6rem;
+                  font-weight: 700;
+                  color: #1a6bdc;
+                  line-height: 1.2;
+          }
+          @media (max-width: 640px) {
+                  .hi-btn { font-size: 1rem; padding: 12px 24px; }
+          }
+        </style>
+  </head>
+  <body>
+      <div class="container">
+            <img src="Dawn_Transparent.png" alt="Dawn" class="dawn-image" />
+            <button class="hi-btn" id="hiBtn">Say Hi to Dawn</button>button>
+            <div class="counters">
+                    <div class="counter-item">
+                              <span id="visitCount">...</span>span>
+                              Page Visits
+                    </div>div>
+                    <div class="counter-item">
+                              <span id="clickCount">...</span>span>
+                              Hi's Said
+                    </div>div>
+            </div>div>
+      </div>div>
+      <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+      <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+      <script>
+            firebase.initializeApp({
+                    apiKey: "AIzaSyCfssB7iM_zTHDBOVoLH9JqVxNZwaVbK9s",
+                    authDomain: "realtonomy.firebaseapp.com",
+                    projectId: "realtonomy",
+                    storageBucket: "realtonomy.firebasestorage.app",
+                    messagingSenderId: "393079711947",
+                    appId: "1:393079711947:web:612f107ae44720261ed34e"
+            });
+            const db = firebase.firestore();
+            const countersRef = db.collection("stats").doc("counters");
+            const FieldValue = firebase.firestore.FieldValue;
+            countersRef.set({ visits: FieldValue.increment(1) }, { merge: true })
+              .then(() => countersRef.get())
+              .then(snap => {
+                        const data = snap.data() || {};
+                        document.getElementById('visitCount').textContent = data.visits || 0;
+                        document.getElementById('clickCount').textContent = data.clicks || 0;
+              })
+              .catch(err => {
+                        document.getElementById('visitCount').textContent = '-';
+                        document.getElementById('clickCount').textContent = '-';
+                        console.error('Firestore error:', err);
+              });
+            function sayHi() {
+                    countersRef.set({ clicks: FieldValue.increment(1) }, { merge: true })
+                      .then(() => countersRef.get())
+                      .then(snap => {
+                                  document.getElementById('clickCount').textContent = snap.data().clicks || 0;
+                      });
+                    const utterance = new SpeechSynthesisUtterance("... Hi, I'm Dawn. See you later.");
+                    utterance.lang = 'en-GB';
+                    function doSpeak() {
+                              const voices = speechSynthesis.getVoices();
+                              const britishFemale =
+                                          voices.find(v => v.name === 'Google UK English Female') ||
+                                          voices.find(v => v.name === 'Microsoft Libby Online (Natural)') ||
+                                          voices.find(v => v.name === 'Microsoft Mia Online (Natural)') ||
+                                          voices.find(v => v.name.includes('Serena')) ||
+                                          voices.find(v => v.name.includes('Martha')) ||
+                                          voices.find(v => v.lang === 'en-GB' && v.name.toLowerCase().includes('female')) ||
+                                          voices.find(v => v.lang === 'en-GB') ||
+                                          voices.find(v => v.lang.startsWith('en'));
+                              if (britishFemale) utterance.voice = britishFemale;
+                              const primer = new SpeechSynthesisUtterance(' ');
+                              primer.volume = 0;
+                              if (britishFemale) primer.voice = britishFemale;
+                              speechSynthesis.speak(primer);
+                              setTimeout(() => speechSynthesis.speak(utterance), 300);
+                    }
+                    if (speechSynthesis.getVoices().length > 0) {
+                              doSpeak();
+                    } else {
+                              speechSynthesis.onvoiceschanged = doSpeak;
+                    }
+            }
+            document.getElementById('hiBtn').addEventListener('click', sayHi);
+      </script>
+  </body>
 </html>
