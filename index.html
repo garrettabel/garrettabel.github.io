@@ -94,8 +94,7 @@
         document.getElementById('visitCount').textContent = data.visits || 0;
         document.getElementById('clickCount').textContent = data.clicks || 0;
       })
-      .catch(function(err) {
-        // Retry once on failure (helps with Safari ITP cold start)
+      .catch(function() {
         setTimeout(function() {
           countersRef.get()
             .then(function(snap) {
@@ -110,21 +109,79 @@
         }, 3000);
       });
 
-    // Speech synthesis - uses silent primer utterance to warm up engine on first click
-    var speechPrimed = false;
+    // Known male voice names to explicitly exclude
+    var maleVoiceNames = [
+      'David', 'Mark', 'Daniel', 'George', 'James', 'Ryan',
+      'Thomas', 'Eric', 'Guy', 'Richard', 'Fred', 'Alex',
+      'Bruce', 'Junior', 'Ralph', 'Albert', 'Bad News',
+      'Bahh', 'Bells', 'Boing', 'Bubbles', 'Cellos',
+      'Deranged', 'Good News', 'Hysterical', 'Pipe Organ',
+      'Trinoids', 'Whisper', 'Zarvox'
+    ];
+
+    function isMale(voice) {
+      var n = voice.name;
+      for (var i = 0; i < maleVoiceNames.length; i++) {
+        if (n.indexOf(maleVoiceNames[i]) > -1) return true;
+      }
+      return false;
+    }
+
+    // Verified female voice names across Chrome, Edge, Safari, Firefox
+    // Ordered: British English first, then other English females
+    var femaleVoiceNames = [
+      // British English females (en-GB)
+      'Google UK English Female',   // Chrome
+      'Microsoft Libby',            // Edge (en-GB)
+      'Microsoft Mia',              // Edge (en-GB)
+      'Microsoft Sonia',            // Edge (en-GB)
+      'Microsoft Hazel',            // Edge (en-GB, older)
+      'Serena',                     // Safari macOS/iOS (en-GB)
+      'Martha',                     // Safari macOS/iOS (en-GB)
+      // American English females
+      'Microsoft Zira',             // Edge/Windows (en-US)
+      'Microsoft Jenny',            // Edge (en-US)
+      'Microsoft Aria',             // Edge (en-US)
+      'Microsoft Michelle',         // Edge (en-US)
+      'Microsoft Monica',           // Edge (en-US)
+      'Samantha',                   // Safari macOS/iOS (en-US)
+      'Victoria',                   // Safari macOS (en-US)
+      'Karen',                      // Safari (en-AU)
+      'Moira',                      // Safari (en-IE)
+      'Tessa',                      // Safari (en-ZA)
+      'Fiona',                      // Safari (en-Scotland)
+      'Google US English'           // Chrome (en-US, female)
+    ];
 
     function getVoice() {
       var voices = speechSynthesis.getVoices();
-      return (
-        voices.find(function(v) { return v.name === 'Google UK English Female'; }) ||
-        voices.find(function(v) { return v.name === 'Microsoft Libby Online (Natural)'; }) ||
-        voices.find(function(v) { return v.name === 'Microsoft Mia Online (Natural)'; }) ||
-        voices.find(function(v) { return v.name.indexOf('Serena') > -1; }) ||
-        voices.find(function(v) { return v.name.indexOf('Martha') > -1; }) ||
-        voices.find(function(v) { return v.lang === 'en-GB'; }) ||
-        voices.find(function(v) { return v.lang.indexOf('en') === 0; }) ||
-        null
-      );
+
+      // First pass: look for a known female voice by name (exact or partial match)
+      for (var i = 0; i < femaleVoiceNames.length; i++) {
+        var target = femaleVoiceNames[i];
+        for (var j = 0; j < voices.length; j++) {
+          if (voices[j].name.indexOf(target) > -1) {
+            return voices[j];
+          }
+        }
+      }
+
+      // Second pass: any en-GB voice that is not known-male
+      for (var j = 0; j < voices.length; j++) {
+        if (voices[j].lang === 'en-GB' && !isMale(voices[j])) {
+          return voices[j];
+        }
+      }
+
+      // Third pass: any English voice that is not known-male
+      for (var j = 0; j < voices.length; j++) {
+        if (voices[j].lang.indexOf('en') === 0 && !isMale(voices[j])) {
+          return voices[j];
+        }
+      }
+
+      // Last resort: return null and let browser use default
+      return null;
     }
 
     function speakDawn() {
