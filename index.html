@@ -86,6 +86,7 @@
     var countersRef = db.collection("stats").doc("counters");
     var FieldValue = firebase.firestore.FieldValue;
 
+    // Record page visit and read both counters
     countersRef.set({ visits: FieldValue.increment(1) }, { merge: true })
       .then(function() { return countersRef.get(); })
       .then(function(snap) {
@@ -93,39 +94,68 @@
         document.getElementById('visitCount').textContent = data.visits || 0;
         document.getElementById('clickCount').textContent = data.clicks || 0;
       })
-      .catch(function() {
-        document.getElementById('visitCount').textContent = '-';
-        document.getElementById('clickCount').textContent = '-';
+      .catch(function(err) {
+        // Retry once on failure (helps with Safari ITP cold start)
+        setTimeout(function() {
+          countersRef.get()
+            .then(function(snap) {
+              var data = snap.data() || {};
+              document.getElementById('visitCount').textContent = data.visits || 0;
+              document.getElementById('clickCount').textContent = data.clicks || 0;
+            })
+            .catch(function() {
+              document.getElementById('visitCount').textContent = '-';
+              document.getElementById('clickCount').textContent = '-';
+            });
+        }, 3000);
       });
 
+    // Speech synthesis - uses silent primer utterance to warm up engine on first click
+    var speechPrimed = false;
+
+    function getVoice() {
+      var voices = speechSynthesis.getVoices();
+      return (
+        voices.find(function(v) { return v.name === 'Google UK English Female'; }) ||
+        voices.find(function(v) { return v.name === 'Microsoft Libby Online (Natural)'; }) ||
+        voices.find(function(v) { return v.name === 'Microsoft Mia Online (Natural)'; }) ||
+        voices.find(function(v) { return v.name.indexOf('Serena') > -1; }) ||
+        voices.find(function(v) { return v.name.indexOf('Martha') > -1; }) ||
+        voices.find(function(v) { return v.lang === 'en-GB'; }) ||
+        voices.find(function(v) { return v.lang.indexOf('en') === 0; }) ||
+        null
+      );
+    }
+
+    function speakDawn() {
+      var utterance = new SpeechSynthesisUtterance('Hi, I am Dawn. See you later.');
+      utterance.lang = 'en-GB';
+      utterance.rate = 0.95;
+      var voice = getVoice();
+      if (voice) utterance.voice = voice;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(utterance);
+    }
+
     function sayHi() {
+      // Update Firebase click counter
       countersRef.set({ clicks: FieldValue.increment(1) }, { merge: true })
         .then(function() { return countersRef.get(); })
         .then(function(snap) {
           document.getElementById('clickCount').textContent = snap.data().clicks || 0;
         });
-      var utterance = new SpeechSynthesisUtterance("... Hi, I'm Dawn. See you later.");
-      utterance.lang = 'en-GB';
-      function doSpeak() {
-        var voices = speechSynthesis.getVoices();
-        var britishFemale =
-          voices.find(function(v) { return v.name === 'Google UK English Female'; }) ||
-          voices.find(function(v) { return v.name === 'Microsoft Libby Online (Natural)'; }) ||
-          voices.find(function(v) { return v.name === 'Microsoft Mia Online (Natural)'; }) ||
-          voices.find(function(v) { return v.name.indexOf('Serena') > -1; }) ||
-          voices.find(function(v) { return v.name.indexOf('Martha') > -1; }) ||
-          voices.find(function(v) { return v.lang === 'en-GB'; }) ||
-          voices.find(function(v) { return v.lang.indexOf('en') === 0; });
-        if (britishFemale) utterance.voice = britishFemale;
-        speechSynthesis.cancel();
-        setTimeout(function() { speechSynthesis.speak(utterance); }, 200);
-      }
-      if (speechSynthesis.getVoices().length > 0) {
-        doSpeak();
+
+      // If voices not loaded yet, wait for them
+      if (speechSynthesis.getVoices().length === 0) {
+        speechSynthesis.onvoiceschanged = function() {
+          speechSynthesis.onvoiceschanged = null;
+          speakDawn();
+        };
       } else {
-        speechSynthesis.onvoiceschanged = function() { doSpeak(); };
+        speakDawn();
       }
     }
+
     document.getElementById('hiBtn').addEventListener('click', sayHi);
   </script>
 </body>
