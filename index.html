@@ -180,12 +180,24 @@
 
     function speakDawn() {
       var text = dawnPrompt || "Hi, I'm Dawn. See you later.";
-      var utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-GB';
-      utterance.rate = 0.95;
       if (!selectedVoice) resolveVoice();
-      if (selectedVoice) utterance.voice = selectedVoice;
-      speechSynthesis.speak(utterance);
+
+      // Hardcoded silent primer — warms up the audio pipeline before
+      // speaking the text file content, so the first word is never clipped.
+      var primer = new SpeechSynthesisUtterance('');
+      primer.volume = 0;
+      primer.lang   = 'en-GB';
+      if (selectedVoice) primer.voice = selectedVoice;
+
+      primer.onstart = function() {
+        var utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-GB';
+        utterance.rate = 0.95;
+        if (selectedVoice) utterance.voice = selectedVoice;
+        speechSynthesis.speak(utterance);
+      };
+
+      speechSynthesis.speak(primer);
     }
 
     /* ── Button handler ──────────────────────────────────── */
