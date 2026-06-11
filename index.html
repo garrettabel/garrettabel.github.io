@@ -101,34 +101,36 @@
     const visitKey = 'realtonomy_visits';
     const clickKey = 'realtonomy_hi_clicks';
 
-    // Increment and display page visit count
     const visits = (parseInt(localStorage.getItem(visitKey) || '0')) + 1;
     localStorage.setItem(visitKey, visits);
     document.getElementById('visitCount').textContent = visits;
 
-    // Display current click count
     document.getElementById('clickCount').textContent =
       localStorage.getItem(clickKey) || '0';
 
     // --- Speech Synthesis ---
     function sayHi() {
-      // Increment click count
       const clicks = (parseInt(localStorage.getItem(clickKey) || '0')) + 1;
       localStorage.setItem(clickKey, clicks);
       document.getElementById('clickCount').textContent = clicks;
 
-      // Speak
       const utterance = new SpeechSynthesisUtterance("Hi, I'm Dawn. See you later.");
       utterance.lang = 'en-GB';
 
       function doSpeak() {
-  const voices = speechSynthesis.getVoices();
-  const britishFemale = voices.find(v => v.name === 'Google UK English Female')
-    || voices.find(v => v.lang === 'en-GB' && v.name.toLowerCase().includes('female'))
-    || voices.find(v => v.lang === 'en-GB');
-  if (britishFemale) utterance.voice = britishFemale;
-  setTimeout(() => speechSynthesis.speak(utterance), 400);
-}
+        const voices = speechSynthesis.getVoices();
+        const britishFemale = voices.find(v => v.name === 'Google UK English Female')
+          || voices.find(v => v.lang === 'en-GB' && v.name.toLowerCase().includes('female'))
+          || voices.find(v => v.lang === 'en-GB');
+        if (britishFemale) utterance.voice = britishFemale;
+
+        const primer = new SpeechSynthesisUtterance(' ');
+        primer.volume = 0;
+        if (britishFemale) primer.voice = britishFemale;
+        speechSynthesis.speak(primer);
+
+        setTimeout(() => speechSynthesis.speak(utterance), 300);
+      }
 
       if (speechSynthesis.getVoices().length > 0) {
         doSpeak();
