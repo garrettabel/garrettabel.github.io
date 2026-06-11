@@ -75,6 +75,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script>
+    /* v2 - Edge cache fix */
+
     /* ── Firebase ─────────────────────────────────────────── */
     firebase.initializeApp({
       apiKey: "AIzaSyCfssB7iM_zTHDBOVoLH9JqVxNZwaVbK9s",
@@ -84,34 +86,17 @@
       messagingSenderId: "393079711947",
       appId: "1:393079711947:web:612f107ae44720261ed34e"
     });
+    var db = firebase.firestore();
+    var ref = db.collection("stats").doc("counters");
+    var FV = firebase.firestore.FieldValue;
 
-    var db      = firebase.firestore();
-    var ref     = db.collection("stats").doc("counters");
-    var FV      = firebase.firestore.FieldValue;
-    var visitEl = document.getElementById('visitCount');
-    var clickEl = document.getElementById('clickCount');
+    /* ── UI refs ──────────────────────────────────────────── */
+    var visitEl = document.getElementById("visitCount");
+    var clickEl = document.getElementById("clickCount");
 
-    function showCounts(snap) {
-      var d = snap.data() || {};
-      visitEl.textContent = d.visits || 0;
-      clickEl.textContent = d.clicks || 0;
-    }
-
-    function showError() {
-      visitEl.textContent = '-';
-      clickEl.textContent = '-';
-    }
-
-    ref.set({ visits: FV.increment(1) }, { merge: true })
-      .then(function() { return ref.get(); })
-      .then(showCounts)
-      .catch(function() {
-        setTimeout(function() {
-          ref.get().then(showCounts).catch(showError);
-        }, 3000);
-      });
-
-    /* ── Speech synthesis ────────────────────────────────── */
+    /* ── Voice selection ──────────────────────────────────── */
+    var selectedVoice = null;
+    var dawnPrompt = null;
 
     var FEMALE_VOICES = [
       'Google UK English Female',
@@ -133,51 +118,69 @@
       'Tessa'
     ];
 
-    var MALE_NAMES = [
-      'David', 'Mark', 'Daniel', 'George', 'James', 'Ryan',
-      'Thomas', 'Eric', 'Guy', 'Richard', 'Fred', 'Alex',
-      'Bruce', 'Junior', 'Ralph', 'Albert'
+    var MALE_VOICES = [
+      'David','Mark','Daniel','George','James','Ryan','Thomas',
+      'Eric','Guy','Richard','Fred','Alex','Bruce','Junior','Ralph',
+      'Albert'
     ];
-
-    var selectedVoice = null;
-    var dawnPrompt    = null;   // loaded from DawnPrompt.txt
-
-    function pickVoice(voices) {
-      for (var i = 0; i < FEMALE_VOICES.length; i++) {
-        for (var j = 0; j < voices.length; j++) {
-          if (voices[j].name.indexOf(FEMALE_VOICES[i]) === 0) return voices[j];
-        }
-      }
-      for (var j = 0; j < voices.length; j++) {
-        var v = voices[j];
-        if (v.lang === 'en-GB' && !MALE_NAMES.some(function(m) { return v.name.indexOf(m) > -1; })) return v;
-      }
-      for (var j = 0; j < voices.length; j++) {
-        var v = voices[j];
-        if (v.lang.indexOf('en') === 0 && !MALE_NAMES.some(function(m) { return v.name.indexOf(m) > -1; })) return v;
-      }
-      return null;
-    }
 
     function resolveVoice() {
       var voices = speechSynthesis.getVoices();
-      if (voices.length > 0) selectedVoice = pickVoice(voices);
+      if (!voices || voices.length === 0) return;
+
+      // 1. Priority: exact female whitelist match
+      for (var i = 0; i < FEMALE_VOICES.length; i++) {
+        for (var j = 0; j < voices.length; j++) {
+          if (voices[j].name.indexOf(FEMALE_VOICES[i]) === 0) {
+            selectedVoice = voices[j];
+            return;
+          }
+        }
+      }
+
+      // 2. Fallback: any en-GB voice not on male blacklist
+      for (var k = 0; k < voices.length; k++) {
+        var vname = voices[k].name;
+        var isMale = false;
+        for (var m = 0; m < MALE_VOICES.length; m++) {
+          if (vname.indexOf(MALE_VOICES[m]) !== -1) { isMale = true; break; }
+        }
+        if (!isMale && voices[k].lang && voices[k].lang.indexOf('en-GB') === 0) {
+          selectedVoice = voices[k];
+          return;
+        }
+      }
+
+      // 3. Final fallback: any English voice not on male blacklist
+      for (var n = 0; n < voices.length; n++) {
+        var vn = voices[n].name;
+        var isMaleN = false;
+        for (var p = 0; p < MALE_VOICES.length; p++) {
+          if (vn.indexOf(MALE_VOICES[p]) !== -1) { isMaleN = true; break; }
+        }
+        if (!isMaleN && voices[n].lang && voices[n].lang.indexOf('en') === 0) {
+          selectedVoice = voices[n];
+          return;
+        }
+      }
     }
 
+    // Load voices — resolve immediately and also on voiceschanged
     resolveVoice();
-    if (!selectedVoice) {
+    if (speechSynthesis.onvoiceschanged !== undefined) {
       speechSynthesis.onvoiceschanged = function() {
-        speechSynthesis.onvoiceschanged = null;
         resolveVoice();
+        speechSynthesis.onvoiceschanged = null;
       };
     }
 
-    // Fetch DawnPrompt.txt — add cache-bust so edits are picked up immediately
+    /* ── Load DawnPrompt.txt ──────────────────────────────── */
     fetch('DawnPrompt.txt?v=' + Date.now())
       .then(function(r) { return r.text(); })
-      .then(function(text) { dawnPrompt = text.trim(); })
-      .catch(function() { dawnPrompt = "Hi, I'm Dawn. See you later."; });
+      .then(function(t) { dawnPrompt = t.trim(); })
+      .catch(function() { dawnPrompt = null; });
 
+    /* ── Speech ───────────────────────────────────────────── */
     function speakDawn() {
       var text = dawnPrompt || "Hi, I'm Dawn. See you later.";
       if (!selectedVoice) resolveVoice();
@@ -192,7 +195,21 @@
       speechSynthesis.speak(window._dawnUtterance);
     }
 
-    /* ── Button handler ──────────────────────────────────── */
+    /* ── Page visit counter ───────────────────────────────── */
+    ref.set({ visits: FV.increment(1) }, { merge: true })
+      .then(function() { return ref.get(); })
+      .then(function(snap) {
+        visitEl.textContent = (snap.data() || {}).visits || 0;
+      })
+      .catch(function() {
+        setTimeout(function() {
+          ref.get().then(function(snap) {
+            visitEl.textContent = (snap.data() || {}).visits || 0;
+          });
+        }, 3000);
+      });
+
+    /* ── Hi button ────────────────────────────────────────── */
     document.getElementById('hiBtn').addEventListener('click', function() {
       ref.set({ clicks: FV.increment(1) }, { merge: true })
         .then(function() { return ref.get(); })
