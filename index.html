@@ -85,11 +85,11 @@
       appId: "1:393079711947:web:612f107ae44720261ed34e"
     });
 
-    var db          = firebase.firestore();
-    var ref         = db.collection("stats").doc("counters");
-    var FV          = firebase.firestore.FieldValue;
-    var visitEl     = document.getElementById('visitCount');
-    var clickEl     = document.getElementById('clickCount');
+    var db      = firebase.firestore();
+    var ref     = db.collection("stats").doc("counters");
+    var FV      = firebase.firestore.FieldValue;
+    var visitEl = document.getElementById('visitCount');
+    var clickEl = document.getElementById('clickCount');
 
     function showCounts(snap) {
       var d = snap.data() || {};
@@ -102,8 +102,6 @@
       clickEl.textContent = '-';
     }
 
-    // Increment visit counter then display both counts.
-    // On failure, retry once after 3 s (helps Safari ITP cold-start).
     ref.set({ visits: FV.increment(1) }, { merge: true })
       .then(function() { return ref.get(); })
       .then(showCounts)
@@ -115,9 +113,6 @@
 
     /* ── Speech synthesis ────────────────────────────────── */
 
-    // Verified female voice names, British-first priority.
-    // Uses exact prefix matching so e.g. "Microsoft Libby" matches
-    // "Microsoft Libby Online (Natural)" without risking false matches.
     var FEMALE_VOICES = [
       'Google UK English Female',
       'Microsoft Libby',
@@ -138,50 +133,37 @@
       'Tessa'
     ];
 
-    // Male names to exclude from en-GB / en fallback
     var MALE_NAMES = [
       'David', 'Mark', 'Daniel', 'George', 'James', 'Ryan',
       'Thomas', 'Eric', 'Guy', 'Richard', 'Fred', 'Alex',
       'Bruce', 'Junior', 'Ralph', 'Albert'
     ];
 
-    var selectedVoice = null;   // resolved once voices are available
+    var selectedVoice = null;
+    var dawnPrompt    = null;   // loaded from DawnPrompt.txt
 
     function pickVoice(voices) {
-      // Pass 1: known female by name
       for (var i = 0; i < FEMALE_VOICES.length; i++) {
         for (var j = 0; j < voices.length; j++) {
-          if (voices[j].name.indexOf(FEMALE_VOICES[i]) === 0) {
-            return voices[j];
-          }
+          if (voices[j].name.indexOf(FEMALE_VOICES[i]) === 0) return voices[j];
         }
       }
-      // Pass 2: any en-GB voice not on the male list
       for (var j = 0; j < voices.length; j++) {
         var v = voices[j];
-        if (v.lang === 'en-GB' && !MALE_NAMES.some(function(m) { return v.name.indexOf(m) > -1; })) {
-          return v;
-        }
+        if (v.lang === 'en-GB' && !MALE_NAMES.some(function(m) { return v.name.indexOf(m) > -1; })) return v;
       }
-      // Pass 3: any English voice not on the male list
       for (var j = 0; j < voices.length; j++) {
         var v = voices[j];
-        if (v.lang.indexOf('en') === 0 && !MALE_NAMES.some(function(m) { return v.name.indexOf(m) > -1; })) {
-          return v;
-        }
+        if (v.lang.indexOf('en') === 0 && !MALE_NAMES.some(function(m) { return v.name.indexOf(m) > -1; })) return v;
       }
       return null;
     }
 
     function resolveVoice() {
       var voices = speechSynthesis.getVoices();
-      if (voices.length > 0) {
-        selectedVoice = pickVoice(voices);
-      }
+      if (voices.length > 0) selectedVoice = pickVoice(voices);
     }
 
-    // Resolve immediately if already available, otherwise wait for the event.
-    // onvoiceschanged fires once; after that we leave it null so nothing conflicts.
     resolveVoice();
     if (!selectedVoice) {
       speechSynthesis.onvoiceschanged = function() {
@@ -190,11 +172,17 @@
       };
     }
 
+    // Fetch DawnPrompt.txt — add cache-bust so edits are picked up immediately
+    fetch('DawnPrompt.txt?v=' + Date.now())
+      .then(function(r) { return r.text(); })
+      .then(function(text) { dawnPrompt = text.trim(); })
+      .catch(function() { dawnPrompt = "Hi, I'm Dawn. See you later."; });
+
     function speakDawn() {
-      var utterance = new SpeechSynthesisUtterance(`Hi, I am Dawn! See you later.'`;
-      utterance.lang  = 'en-GB';
-      utterance.rate  = 0.95;
-      // Re-resolve at speak-time in case voices loaded after page init
+      var text = dawnPrompt || "Hi, I'm Dawn. See you later.";
+      var utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-GB';
+      utterance.rate = 0.95;
       if (!selectedVoice) resolveVoice();
       if (selectedVoice) utterance.voice = selectedVoice;
       speechSynthesis.speak(utterance);
@@ -202,14 +190,12 @@
 
     /* ── Button handler ──────────────────────────────────── */
     document.getElementById('hiBtn').addEventListener('click', function() {
-      // Increment click counter and refresh display
       ref.set({ clicks: FV.increment(1) }, { merge: true })
         .then(function() { return ref.get(); })
         .then(function(snap) {
           clickEl.textContent = (snap.data() || {}).clicks || 0;
         });
 
-      // Speak directly — no cancel(), no setTimeout, preserves user gesture
       speakDawn();
     });
   </script>
