@@ -128,69 +128,68 @@
     }
 
     // Verified female voice names across Chrome, Edge, Safari, Firefox
-    // Ordered: British English first, then other English females
     var femaleVoiceNames = [
-      // British English females (en-GB)
-      'Google UK English Female',   // Chrome
-      'Microsoft Libby',            // Edge (en-GB)
-      'Microsoft Mia',              // Edge (en-GB)
-      'Microsoft Sonia',            // Edge (en-GB)
-      'Microsoft Hazel',            // Edge (en-GB, older)
-      'Serena',                     // Safari macOS/iOS (en-GB)
-      'Martha',                     // Safari macOS/iOS (en-GB)
-      // American English females
-      'Microsoft Zira',             // Edge/Windows (en-US)
-      'Microsoft Jenny',            // Edge (en-US)
-      'Microsoft Aria',             // Edge (en-US)
-      'Microsoft Michelle',         // Edge (en-US)
-      'Microsoft Monica',           // Edge (en-US)
-      'Samantha',                   // Safari macOS/iOS (en-US)
-      'Victoria',                   // Safari macOS (en-US)
-      'Karen',                      // Safari (en-AU)
-      'Moira',                      // Safari (en-IE)
-      'Tessa',                      // Safari (en-ZA)
-      'Fiona',                      // Safari (en-Scotland)
-      'Google US English'           // Chrome (en-US, female)
+      'Google UK English Female',
+      'Microsoft Libby',
+      'Microsoft Mia',
+      'Microsoft Sonia',
+      'Microsoft Hazel',
+      'Serena',
+      'Martha',
+      'Microsoft Zira',
+      'Microsoft Jenny',
+      'Microsoft Aria',
+      'Microsoft Michelle',
+      'Microsoft Monica',
+      'Samantha',
+      'Victoria',
+      'Karen',
+      'Moira',
+      'Tessa',
+      'Fiona',
+      'Google US English'
     ];
 
     function getVoice() {
       var voices = speechSynthesis.getVoices();
-
-      // First pass: look for a known female voice by name (exact or partial match)
       for (var i = 0; i < femaleVoiceNames.length; i++) {
         var target = femaleVoiceNames[i];
         for (var j = 0; j < voices.length; j++) {
-          if (voices[j].name.indexOf(target) > -1) {
-            return voices[j];
-          }
+          if (voices[j].name.indexOf(target) > -1) return voices[j];
         }
       }
-
-      // Second pass: any en-GB voice that is not known-male
       for (var j = 0; j < voices.length; j++) {
-        if (voices[j].lang === 'en-GB' && !isMale(voices[j])) {
-          return voices[j];
-        }
+        if (voices[j].lang === 'en-GB' && !isMale(voices[j])) return voices[j];
       }
-
-      // Third pass: any English voice that is not known-male
       for (var j = 0; j < voices.length; j++) {
-        if (voices[j].lang.indexOf('en') === 0 && !isMale(voices[j])) {
-          return voices[j];
-        }
+        if (voices[j].lang.indexOf('en') === 0 && !isMale(voices[j])) return voices[j];
       }
-
-      // Last resort: return null and let browser use default
       return null;
     }
 
+    // Pre-load voices as early as possible so they are ready on first click
+    var voicesReady = false;
+    function loadVoices() {
+      var voices = speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        voicesReady = true;
+      }
+    }
+    loadVoices();
+    speechSynthesis.onvoiceschanged = function() {
+      loadVoices();
+    };
+
     function speakDawn() {
+      // IMPORTANT: Do NOT call speechSynthesis.cancel() here.
+      // cancel() consumes the user gesture in many browsers, causing
+      // speak() to be treated as a non-gesture call and silently fail.
+      // Instead we just speak directly - if already speaking it will queue.
       var utterance = new SpeechSynthesisUtterance('Hi, I am Dawn. See you later.');
       utterance.lang = 'en-GB';
       utterance.rate = 0.95;
       var voice = getVoice();
       if (voice) utterance.voice = voice;
-      speechSynthesis.cancel();
       speechSynthesis.speak(utterance);
     }
 
@@ -202,14 +201,19 @@
           document.getElementById('clickCount').textContent = snap.data().clicks || 0;
         });
 
-      // If voices not loaded yet, wait for them
-      if (speechSynthesis.getVoices().length === 0) {
+      if (voicesReady) {
+        speakDawn();
+      } else {
+        // Voices not loaded yet - wait then speak (still within gesture on most browsers)
         speechSynthesis.onvoiceschanged = function() {
-          speechSynthesis.onvoiceschanged = null;
+          speechSynthesis.onvoiceschanged = function() { loadVoices(); };
+          voicesReady = true;
           speakDawn();
         };
-      } else {
-        speakDawn();
+        // Also try a short timeout as fallback for browsers that already fired onvoiceschanged
+        setTimeout(function() {
+          if (!speechSynthesis.speaking) speakDawn();
+        }, 100);
       }
     }
 
