@@ -1,58 +1,19 @@
-/* app.js - v2
- * Realtonomy - Dawn voice assistant + Firebase counters
- * Voice loading fix: Promise-based pattern (Stack Overflow consensus)
- * per https://stackoverflow.com/questions/21513706/
- * To update JS: bump ?v=N in the app.js script tag in index.html
+/* app.js - v3
+ * Realtonomy - Dawn voice assistant
+ * Counters + Firebase removed (DB locked down). Voice feature unchanged.
  */
 
-/* ── Firebase init ────────────────────────────────────────── */
-firebase.initializeApp({
-  apiKey: "AIzaSyCfssB7iM_zTHDBOVoLH9JqVxNZwaVbK9s",
-  authDomain: "realtonomy.firebaseapp.com",
-  projectId: "realtonomy",
-  storageBucket: "realtonomy.firebasestorage.app",
-  messagingSenderId: "393079711947",
-  appId: "1:393079711947:web:612f107ae44720261ed34e"
-});
-var db = firebase.firestore();
-var ref = db.collection("stats").doc("counters");
-var FV = firebase.firestore.FieldValue;
-
-/* ── UI refs ──────────────────────────────────────────────── */
-var visitEl = document.getElementById("visitCount");
-var clickEl = document.getElementById("clickCount");
-
-/* ── Voice loading - Promise-based (documented best practice) ─
- * getVoices() returns [] on first call in Chrome/Edge because
- * voices load asynchronously. The fix: resolve a Promise either
- * immediately (if voices already loaded) or inside onvoiceschanged.
- * This is the pattern endorsed by MDN and the dev community.
- * See: https://stackoverflow.com/questions/21513706/
- * ─────────────────────────────────────────────────────────── */
+/* -- Voice selection -- */
 var FEMALE_VOICES = [
-  'Google UK English Female',
-  'Microsoft Libby',
-  'Microsoft Mia',
-  'Microsoft Sonia',
-  'Microsoft Hazel',
-  'Serena',
-  'Martha',
-  'Microsoft Zira',
-  'Microsoft Jenny',
-  'Microsoft Aria',
-  'Microsoft Michelle',
-  'Microsoft Monica',
-  'Samantha',
-  'Victoria',
-  'Karen',
-  'Moira',
-  'Tessa'
+  'Google UK English Female','Microsoft Libby','Microsoft Mia','Microsoft Sonia',
+  'Microsoft Hazel','Serena','Martha','Microsoft Zira','Microsoft Jenny',
+  'Microsoft Aria','Microsoft Michelle','Microsoft Monica','Samantha',
+  'Victoria','Karen','Moira','Tessa'
 ];
 
 var MALE_VOICES = [
   'David','Mark','Daniel','George','James','Ryan','Thomas',
-  'Eric','Guy','Richard','Fred','Alex','Bruce','Junior','Ralph',
-  'Albert'
+  'Eric','Guy','Richard','Fred','Alex','Bruce','Junior','Ralph','Albert'
 ];
 
 function pickVoice(voices) {
@@ -89,9 +50,7 @@ function pickVoice(voices) {
   return null;
 }
 
-// Promise resolves with the chosen voice object once voices are available.
-// If already loaded (voices.length > 0) resolves immediately.
-// Otherwise waits for onvoiceschanged - the correct async event per spec.
+// Promise resolves with the chosen voice once voices are available.
 var voiceReady = new Promise(function(resolve) {
   var voices = speechSynthesis.getVoices();
   if (voices.length > 0) {
@@ -104,23 +63,19 @@ var voiceReady = new Promise(function(resolve) {
   }
 });
 
-/* ── Load DawnPrompt.txt ──────────────────────────────────── */
+/* -- Load DawnPrompt.txt -- */
 var promptReady = fetch('DawnPrompt.txt?v=' + Date.now())
   .then(function(r) { return r.text(); })
   .then(function(t) { return t.trim(); })
   .catch(function() { return "Hi, I'm Dawn. See you later."; });
 
-/* ── Speech ───────────────────────────────────────────────── */
+/* -- Speech -- */
 function speakDawn() {
-  // Wait for BOTH voice and prompt before speaking.
-  // Guarantees voice is fully loaded - eliminates clipping from
-  // the browser defaulting to an unready or wrong voice.
   Promise.all([voiceReady, promptReady]).then(function(results) {
     var voice = results[0];
     var text = results[1];
 
-    // Fix for Chromium bug #509488: store on window to prevent GC
-    // destroying the utterance mid-speech.
+    // Store on window to prevent GC destroying the utterance mid-speech.
     window._dawnUtterance = new SpeechSynthesisUtterance(text);
     window._dawnUtterance.lang = 'en-GB';
     window._dawnUtterance.rate = 0.95;
@@ -129,27 +84,7 @@ function speakDawn() {
   });
 }
 
-/* ── Page visit counter ───────────────────────────────────── */
-ref.set({ visits: FV.increment(1) }, { merge: true })
-  .then(function() { return ref.get(); })
-  .then(function(snap) {
-    visitEl.textContent = (snap.data() || {}).visits || 0;
-  })
-  .catch(function() {
-    setTimeout(function() {
-      ref.get().then(function(snap) {
-        visitEl.textContent = (snap.data() || {}).visits || 0;
-      });
-    }, 3000);
-  });
-
-/* ── Hi button ────────────────────────────────────────────── */
+/* -- Hi button -- */
 document.getElementById('hiBtn').addEventListener('click', function() {
-  ref.set({ clicks: FV.increment(1) }, { merge: true })
-    .then(function() { return ref.get(); })
-    .then(function(snap) {
-      clickEl.textContent = (snap.data() || {}).clicks || 0;
-    });
-
   speakDawn();
 });
