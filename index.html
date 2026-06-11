@@ -122,13 +122,13 @@
       utterance.lang = 'en-GB';
 
       function doSpeak() {
-        const voices = speechSynthesis.getVoices();
-        const britishFemale = voices.find(v => v.name === 'Google UK English Female')
-          || voices.find(v => v.lang === 'en-GB' && v.name.toLowerCase().includes('female'))
-          || voices.find(v => v.lang === 'en-GB');
-        if (britishFemale) utterance.voice = britishFemale;
-        speechSynthesis.speak(utterance);
-      }
+  const voices = speechSynthesis.getVoices();
+  const britishFemale = voices.find(v => v.name === 'Google UK English Female')
+    || voices.find(v => v.lang === 'en-GB' && v.name.toLowerCase().includes('female'))
+    || voices.find(v => v.lang === 'en-GB');
+  if (britishFemale) utterance.voice = britishFemale;
+  setTimeout(() => speechSynthesis.speak(utterance), 400);
+}
 
       if (speechSynthesis.getVoices().length > 0) {
         doSpeak();
