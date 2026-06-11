@@ -36,21 +36,6 @@
     }
     .hi-btn:hover { background: #1558c0; transform: translateY(-1px); }
     .hi-btn:active { transform: scale(0.97); }
-    .counters {
-      margin-top: 20px;
-      display: flex;
-      justify-content: center;
-      gap: 32px;
-      font-size: 0.88rem;
-      color: #888;
-    }
-    .counter-item span {
-      display: block;
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: #1a6bdc;
-      line-height: 1.2;
-    }
     @media (max-width: 640px) {
       .hi-btn { font-size: 1rem; padding: 12px 24px; }
     }
@@ -60,20 +45,8 @@
   <div class="container">
     <img src="Dawn_Transparent.png" alt="Dawn" class="dawn-image" />
     <button class="hi-btn" id="hiBtn">Say Hi to Dawn</button>
-    <div class="counters">
-      <div class="counter-item">
-        <span id="visitCount">...</span>
-        Page Visits
-      </div>
-      <div class="counter-item">
-        <span id="clickCount">...</span>
-        Hi's Said
-      </div>
-    </div>
   </div>
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="app.js?v=2"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
